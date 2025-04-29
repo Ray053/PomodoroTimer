@@ -1,0 +1,263 @@
+@model PomodoroTimer.Models.PomodoroSettings
+@{
+    ViewData["Title"] = "番茄鐘";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0 text-center">番茄鐘計時器</h3>
+                </div>
+                <div class="card-body">
+                    <!-- 計時器顯示 -->
+                    <div class="text-center mb-4">
+                        <h1 id="timer" class="display-1 mb-3">25:00</h1>
+                        <h4 id="status" class="text-muted">準備開始工作</h4>
+                        <div id="progress" class="progress mt-3 mb-4">
+                            <div id="progress-bar" class="progress-bar bg-danger" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- 控制按鈕 -->
+                    <div class="d-flex justify-content-center mb-4">
+                        <button id="startBtn" class="btn btn-success btn-lg mx-2">開始</button>
+                        <button id="pauseBtn" class="btn btn-warning btn-lg mx-2" disabled>暫停</button>
+                        <button id="resetBtn" class="btn btn-secondary btn-lg mx-2">重置</button>
+                        <button id="skipBtn" class="btn btn-info btn-lg mx-2">跳過</button>
+                    </div>
+
+                    <!-- 番茄計數 -->
+                    <div class="text-center mb-4">
+                        <p>已完成番茄數: <span id="pomodoroCount">0</span></p>
+                    </div>
+
+                    <!-- 設置表單 -->
+                    <div class="mt-4">
+                        <button class="btn btn-outline-secondary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#settingsForm">
+                            設置
+                        </button>
+                        <div class="collapse" id="settingsForm">
+                            <div class="card card-body">
+                                <form asp-action="SaveSettings" method="post">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label asp-for="WorkDuration"></label>
+                                                <input asp-for="WorkDuration" class="form-control" />
+                                                <span asp-validation-for="WorkDuration" class="text-danger"></span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label asp-for="ShortBreakDuration"></label>
+                                                <input asp-for="ShortBreakDuration" class="form-control" />
+                                                <span asp-validation-for="ShortBreakDuration" class="text-danger"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label asp-for="LongBreakDuration"></label>
+                                                <input asp-for="LongBreakDuration" class="form-control" />
+                                                <span asp-validation-for="LongBreakDuration" class="text-danger"></span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label asp-for="LongBreakInterval"></label>
+                                                <input asp-for="LongBreakInterval" class="form-control" />
+                                                <span asp-validation-for="LongBreakInterval" class="text-danger"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-center">
+                                        <button type="submit" class="btn btn-primary">保存設置</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // 從模型獲取設置
+        const settings = {
+            workDuration: @Model.WorkDuration,
+            shortBreakDuration: @Model.ShortBreakDuration,
+            longBreakDuration: @Model.LongBreakDuration,
+            longBreakInterval: @Model.LongBreakInterval
+        };
+
+        // 計時器變數
+        let timerInterval;
+        let currentMode = 'work'; // 'work', 'shortBreak', 'longBreak'
+        let timeLeft = settings.workDuration * 60;
+        let totalTime = timeLeft;
+        let isRunning = false;
+        let pomodoroCount = 0;
+        let currentCycle = 1;
+
+        // DOM 元素
+        const timerDisplay = document.getElementById('timer');
+        const statusDisplay = document.getElementById('status');
+        const progressBar = document.getElementById('progress-bar');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const skipBtn = document.getElementById('skipBtn');
+        const pomodoroCountDisplay = document.getElementById('pomodoroCount');
+
+        // 格式化時間為 MM:SS
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // 更新計時器顯示
+        function updateTimerDisplay() {
+            timerDisplay.textContent = formatTime(timeLeft);
+            const progress = ((totalTime - timeLeft) / totalTime) * 100;
+            progressBar.style.width = `${progress}%`;
+        }
+
+        // 更新狀態顯示
+        function updateStatusDisplay() {
+            switch (currentMode) {
+                case 'work':
+                    statusDisplay.textContent = '專注工作中';
+                    progressBar.className = 'progress-bar bg-danger';
+                    break;
+                case 'shortBreak':
+                    statusDisplay.textContent = '短休息中';
+                    progressBar.className = 'progress-bar bg-success';
+                    break;
+                case 'longBreak':
+                    statusDisplay.textContent = '長休息中';
+                    progressBar.className = 'progress-bar bg-info';
+                    break;
+            }
+        }
+
+        // 切換到下一個模式
+        function switchMode() {
+            if (currentMode === 'work') {
+                pomodoroCount++;
+                pomodoroCountDisplay.textContent = pomodoroCount;
+                
+                if (currentCycle >= settings.longBreakInterval) {
+                    currentMode = 'longBreak';
+                    timeLeft = settings.longBreakDuration * 60;
+                    currentCycle = 1;
+                } else {
+                    currentMode = 'shortBreak';
+                    timeLeft = settings.shortBreakDuration * 60;
+                    currentCycle++;
+                }
+            } else {
+                currentMode = 'work';
+                timeLeft = settings.workDuration * 60;
+            }
+            
+            totalTime = timeLeft;
+            updateTimerDisplay();
+            updateStatusDisplay();
+            
+            // 播放聲音提醒
+            playNotification();
+        }
+
+        // 播放通知聲音
+        // 播放通知聲音
+        function playNotification() {
+            // 使用內置的瀏覽器通知
+            if ('Notification' in window) {
+                // 檢查通知權限
+                if (Notification.permission === 'granted') {
+                    new Notification('番茄鐘提醒', {
+                        body: currentMode === 'work' ? '工作時間結束！休息一下吧。' : '休息時間結束！回到工作。',
+                        icon: '/favicon.ico'
+                    });
+                } else if (Notification.permission !== 'denied') {
+                    Notification.requestPermission();
+                }
+            }
+        }
+
+        // 開始計時器
+        function startTimer() {
+            if (isRunning) return;
+            
+            isRunning = true;
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            
+            updateStatusDisplay();
+            
+            timerInterval = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateTimerDisplay();
+                } else {
+                    clearInterval(timerInterval);
+                    switchMode();
+                    startTimer();
+                }
+            }, 1000);
+        }
+
+        // 暫停計時器
+        function pauseTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            statusDisplay.textContent += ' (已暫停)';
+        }
+
+        // 重置計時器
+        function resetTimer() {
+            clearInterval(timerInterval);
+            currentMode = 'work';
+            timeLeft = settings.workDuration * 60;
+            totalTime = timeLeft;
+            isRunning = false;
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            
+            updateTimerDisplay();
+            statusDisplay.textContent = '準備開始工作';
+            progressBar.className = 'progress-bar bg-danger';
+            progressBar.style.width = '0%';
+        }
+
+        // 跳過當前階段
+        function skipStage() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            switchMode();
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+        }
+
+        // 初始化計時器
+        function initTimer() {
+            updateTimerDisplay();
+            startBtn.addEventListener('click', startTimer);
+            pauseBtn.addEventListener('click', pauseTimer);
+            resetBtn.addEventListener('click', resetTimer);
+            skipBtn.addEventListener('click', skipStage);
+        }
+
+        // 初始化頁面
+        document.addEventListener('DOMContentLoaded', initTimer);
+    </script>
+}
