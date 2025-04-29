@@ -1,0 +1,42 @@
+.timer-container {
+    transition: background-color 0.5s ease;
+}
+
+.work-mode {
+    background-color: #ffeded;
+}
+
+.break-mode {
+    background-color: #e8f4ff;
+}
+
+.long-break-mode {
+    background-color: #e8fff0;
+}
+
+.timer-display {
+    font-size: 5rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.status-display {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.pomodoro-counter {
+    margin-top: 1.5rem;
+    font-size: 1.2rem;
+}
+
+.pomodoro-icon {
+    color: #ff6347;
+    margin-right: 5px;
+}
+
+@media (max-width: 768px) {
+    .timer-display {
+        font-size: 3.5rem;
+    }
+}
