@@ -39,9 +39,9 @@
 ### 安裝步驟
 
 1. 克隆本存儲庫：
-- git clone https://github.com/你的用戶名/PomodoroTimer.git
-- cd PomodoroTimer
+'''git clone https://github.com/你的用戶名/PomodoroTimer.git
+'''cd PomodoroTimer
 2. 恢復依賴項：
-- dotnet restore
+'''dotnet restore
 3. 運行應用程式：
-- dotnet run
+'''dotnet run
